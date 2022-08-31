@@ -31,6 +31,24 @@ interface ListParams {
   hashes?: string;
 }
 
+export interface ITorrent {
+  // readonly [index: string]: Function;
+  login(): Promise<Response>;
+  logout(): Promise<Response>;
+  readonly version: Promise<string>;
+  readonly webapiVersion: Promise<string>;
+  readonly buildInfo: Promise<Record<string, unknown>>;
+  readonly preferences: Promise<Record<string, unknown>>;
+  shutdown(): Promise<Response>;
+  torrents(params: ListParams): Promise<Torrent[]>;
+  properties(hash: string): Promise<Torrent>;
+  trackers(hash: string): Promise<Tracker[]>;
+  webseeds(hash: string): Promise<Link[]>;
+  files(hash: string, indexes?: string): Promise<File[]>;
+  pieceStates(hash: string): Promise<number[]>;
+  pieceHashes(hash: string): Promise<string[]>;
+}
+
 /**
  * A client to talk to a qBittorrent server.
  *
@@ -59,7 +77,7 @@ interface ListParams {
  * }
  * ```
  */
-export class qBittorrent {
+export class qBittorrent implements ITorrent {
   #url: URL;
   #headers: Headers;
 
