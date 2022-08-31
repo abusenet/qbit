@@ -1,5 +1,5 @@
 import { log } from "../deps.ts";
-import { Torrent } from "./types.ts";
+import { File, Torrent, Link, Tracker } from "./types.ts";
 
 const USER_AGENT = Deno.env.USER_AGENT || "deno";
 const API_VERSION = 2;
@@ -120,13 +120,15 @@ export class qBittorrent {
   }
 
   async login({ username, password } = this.#url) {
-    const { ok, statusText, headers } = await this.api("auth/login", {
+    const response = await this.api("auth/login", {
       body: {
         username,
         password,
       },
       credentials: "include",
     });
+
+    const { ok, statusText, headers } = response;
 
     if (!ok) {
       throw new Error(statusText);
@@ -136,13 +138,16 @@ export class qBittorrent {
 
     const cookies = headers.get("Set-Cookie");
     this.#headers.set("Cookie", cookies);
-    return cookies;
+
+    return response;
   }
 
   async logout() {
-    await this.api("auth/logout");
+    const response = await this.api("auth/logout");
     this.#headers.delete("Cookie");
     this.debug(`User ${this.#url.username} is logged out`);
+
+    return response;
   }
 
   get version() {
@@ -172,8 +177,64 @@ export class qBittorrent {
     const response = await this.api("torrents/info", { body });
     const torrents = await response.json();
 
-    this.debug(`${ torrents.length } torrents matching ${ JSON.stringify(body) }`);
+    this.debug(`${torrents.length} torrents matching ${JSON.stringify(body)}`);
 
     return torrents;
+  }
+
+  async properties(hash: string): Promise<Torrent> {
+    const response = await this.api("torrents/properties", { body: { hash } });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return null;
+  }
+
+  async trackers(hash: string): Promise<Tracker[]> {
+    const response = await this.api("torrents/trackers", { body: { hash } });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return [];
+  }
+  
+  async webseeds(hash: string): Promise<Link[]> {
+    const response = await this.api("torrents/webseeds", { body: { hash } });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return [];
+  }
+
+  async files(hash: string, indexes?: string): Promise<File[]> {
+    const response = await this.api("torrents/files", {
+      body: { hash, indexes },
+    });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return [];
+  }
+
+  async pieceStates(hash: string): Promise<number[]> {
+    const response = await this.api("torrents/pieceStates", { body: { hash } });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return [];
+  }
+
+  async pieceHashes(hash: string): Promise<string[]> {
+    const response = await this.api("torrents/pieceHashes", { body: { hash } });
+    if (response.ok) {
+      return response.json();
+    }
+
+    return [];
   }
 }
