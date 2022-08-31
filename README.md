@@ -1,2 +1,3 @@
-# deno_qBittorrent
+# qbit
+
 qBittorrent client in Deno
