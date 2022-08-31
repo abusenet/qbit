@@ -157,6 +157,14 @@ export class qBittorrent {
     return this.api("app/buildInfo").then((response) => response.json());
   }
 
+  get preferences() {
+    return this.api("app/preferences").then((response) => response.json());
+  }
+
+  shutdown(): Promise<Response> {
+    return this.api("app/shutdown");
+  }
+
   /**
    * Get torrent list
    */
