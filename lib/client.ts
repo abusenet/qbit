@@ -1,5 +1,5 @@
 import { log } from "../deps.ts";
-import { File, Torrent, Link, Tracker } from "./types.ts";
+import { File, Link, Torrent, Tracker } from "./types.ts";
 
 const USER_AGENT = Deno.env.USER_AGENT || "deno";
 const API_VERSION = 2;
@@ -31,7 +31,7 @@ interface ListParams {
   hashes?: string;
 }
 
-export interface ITorrent {
+interface ITorrent {
   // readonly [index: string]: Function;
   login(): Promise<Response>;
   logout(): Promise<Response>;
@@ -47,6 +47,15 @@ export interface ITorrent {
   files(hash: string, indexes?: string): Promise<File[]>;
   pieceStates(hash: string): Promise<number[]>;
   pieceHashes(hash: string): Promise<string[]>;
+  pause(hashes: string): Promise<Response>;
+  resume(hashes: string): Promise<Response>;
+  delete(hashes: string, deleteFiles: boolean): Promise<Response>;
+  recheck(hashes: string): Promise<Response>;
+  reannounce(hashes: string): Promise<Response>;
+  add(
+    torrent: Torrent,
+    options: { check?: boolean; paused?: boolean },
+  ): Promise<Response>;
 }
 
 /**
@@ -217,7 +226,7 @@ export class qBittorrent implements ITorrent {
 
     return [];
   }
-  
+
   async webseeds(hash: string): Promise<Link[]> {
     const response = await this.api("torrents/webseeds", { body: { hash } });
     if (response.ok) {
@@ -254,5 +263,96 @@ export class qBittorrent implements ITorrent {
     }
 
     return [];
+  }
+
+  pause(hashes: string): Promise<Response> {
+    return this.api("torrents/pause", { body: { hashes } });
+  }
+
+  resume(hashes: string): Promise<Response> {
+    return this.api("torrents/resume", { body: { hashes } });
+  }
+
+  /**
+   * Delete torrents
+   *
+   * Needs the hashes of the torrents to delete, separated by `|`,
+   * or `all`, to delete all torrents.
+   *
+   * If `deleteFiles` is set to `true`, the downloaded data will
+   * also be deleted.
+   */
+  async delete(
+    hashes: string,
+    deleteFiles: boolean,
+  ): Promise<Response> {
+    const response = await this.api("torrents/delete", {
+      body: {
+        hashes,
+        deleteFiles: !!deleteFiles,
+      },
+    });
+
+    if (response.ok) {
+      this.info(`Deleted torrent ${hashes}`);
+    }
+
+    return response;
+  }
+
+  recheck(hashes: string): Promise<Response> {
+    return this.api("torrents/recheck", { body: { hashes } });
+  }
+
+  reannounce(hashes: string): Promise<Response> {
+    return this.api("torrents/reannounce", { body: { hashes } });
+  }
+
+  /**
+   * Adds new torrent from server local file or from URLs.
+   *
+   * `http://`, `https://`, `magnet:` and `bc://bt/` links are supported.
+   */
+  async add(
+    torrent: Torrent,
+    { check, paused }: { check?: boolean; paused?: boolean } = {},
+  ) {
+    const {
+      hash,
+      magnet_uri,
+      save_path,
+      category,
+      tags,
+      up_limit,
+      dl_limit,
+      ratio_limit,
+      seeding_time_limit,
+      auto_tmm,
+      seq_dl,
+      f_l_piece_prio,
+    } = torrent;
+    const response = await this.api("torrents/add", {
+      body: {
+        urls: magnet_uri,
+        savepath: save_path,
+        category,
+        tags,
+        skip_checking: !check,
+        paused,
+        upLimit: up_limit,
+        downLimit: dl_limit,
+        ratioLimit: ratio_limit,
+        seedingTimeLimit: seeding_time_limit,
+        autoTMM: auto_tmm,
+        sequentialDownload: seq_dl,
+        firstLastPiecePrio: f_l_piece_prio,
+      },
+    });
+
+    if (response.ok) {
+      this.info(`Added torrent ${hash}`);
+    }
+
+    return response;
   }
 }

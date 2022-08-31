@@ -57,7 +57,7 @@ export interface Torrent {
 }
 
 export interface Link {
-  url: string,
+  url: string;
 }
 
 export enum TrackerStatus {
