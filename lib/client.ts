@@ -161,8 +161,10 @@ export class qBittorrent implements ITorrent {
     } = init;
 
     if (body) {
-      // Normalizes params and removes key with `undefined` value.
-      body = new URLSearchParams(JSON.parse(JSON.stringify(body)));
+      if (!(body instanceof FormData)) {
+        // Normalizes params and removes key with `undefined` value.
+        body = new URLSearchParams(JSON.parse(JSON.stringify(body)));
+      }
     }
 
     this.debug(`Fetching ${origin}/api/v${API_VERSION}/${path}`);
@@ -342,26 +344,41 @@ export class qBittorrent implements ITorrent {
   }
 
   /**
-   * Adds new torrent from server local file or from URLs.
+   * Adds new torrent from server local files or from URLs.
+   *
+   * Input can be a string of URLs, separated by newline, or an array
+   * of `File`.
    *
    * `http://`, `https://`, `magnet:` and `bc://bt/` links are supported.
    */
   async add(
-    urls: string[],
+    input: string | File[],
     options: Partial<AddParams> = {},
   ) {
-    const skipChecking = options.skipChecking;
-    const body = {
-      urls,
-      skip_checking: skipChecking,
-      ...options,
-    };
-    delete body.skipChecking;
+    const body = new FormData();
+    if (typeof input === "string") {
+      body.append("urls", input);
+    } else if (Array.isArray(input)) {
+      input.forEach(file => body.append("torrents", file));
+    }
+    body.append("skip_checking", `${!!options.skipChecking}`);
+
+    Object.entries(options).forEach(([key, value]) => {
+      if (!value) return;
+      body.append(key, `${value}`);
+    });
+    body.delete("skipChecking");
 
     const response = await this.api("torrents/add", { body });
 
     if (response.ok) {
-      this.info(`Added ${urls}`);
+      let inputs: string[];
+      if (typeof input === "string") {
+        inputs = input.split(/\r?\n/);
+      } else {
+        inputs = input.map(file => file.name);
+      }
+      this.info(`Added ${inputs.join(", ")}`);
     }
 
     return response;
