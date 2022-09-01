@@ -31,6 +31,39 @@ interface ListParams {
   hashes?: string;
 }
 
+interface AddParams {
+  /** Download folder */
+  savepath: string;
+  /** Cookie sent to download the .torrent file */
+  cookie: string;
+  /** Category for the torrent */
+  category: string;
+  /** Tags for the torrent, split by ',' */
+  tags: string;
+  /** Skip hash checking. Default false */
+  skipChecking: boolean;
+  /** Add torrents in the paused state. Default false */
+  paused: boolean;
+  /** Create the root folder. Possible values are true, false, unset (default) */
+  rootFolder: boolean;
+  /** Rename torrent */
+  rename: string;
+  /** Set torrent upload speed limit. Unit in bytes/second */
+  upLimit: number;
+  /** Set torrent download speed limit. Unit in bytes/second */
+  dlLimit: number;
+  /** Set torrent share ratio limit */
+  ratioLimit: number;
+  /** Set torrent seeding time limit. Unit in seconds */
+  seedingTimeLimit: number;
+  /** Whether Automatic Torrent Management should be used */
+  autoTMM: boolean;
+  /** Enable sequential download. Default false */
+  sequentialDownload: boolean;
+  /** Prioritize download first last piece. Default false */
+  firstLastPiecePrio: boolean;
+}
+
 interface ITorrent {
   // readonly [index: string]: Function;
   login(): Promise<Response>;
@@ -314,43 +347,21 @@ export class qBittorrent implements ITorrent {
    * `http://`, `https://`, `magnet:` and `bc://bt/` links are supported.
    */
   async add(
-    torrent: Torrent,
-    { check, paused }: { check?: boolean; paused?: boolean } = {},
+    urls: string[],
+    options: Partial<AddParams> = {},
   ) {
-    const {
-      hash,
-      magnet_uri,
-      save_path,
-      category,
-      tags,
-      up_limit,
-      dl_limit,
-      ratio_limit,
-      seeding_time_limit,
-      auto_tmm,
-      seq_dl,
-      f_l_piece_prio,
-    } = torrent;
-    const response = await this.api("torrents/add", {
-      body: {
-        urls: magnet_uri,
-        savepath: save_path,
-        category,
-        tags,
-        skip_checking: !check,
-        paused,
-        upLimit: up_limit,
-        downLimit: dl_limit,
-        ratioLimit: ratio_limit,
-        seedingTimeLimit: seeding_time_limit,
-        autoTMM: auto_tmm,
-        sequentialDownload: seq_dl,
-        firstLastPiecePrio: f_l_piece_prio,
-      },
-    });
+    const skipChecking = options.skipChecking;
+    const body = {
+      urls,
+      skip_checking: skipChecking,
+      ...options,
+    };
+    delete body.skipChecking;
+
+    const response = await this.api("torrents/add", { body });
 
     if (response.ok) {
-      this.info(`Added torrent ${hash}`);
+      this.info(`Added ${urls}`);
     }
 
     return response;
