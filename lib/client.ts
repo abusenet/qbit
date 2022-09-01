@@ -359,7 +359,7 @@ export class qBittorrent implements ITorrent {
     if (typeof input === "string") {
       body.append("urls", input);
     } else if (Array.isArray(input)) {
-      input.forEach(file => body.append("torrents", file));
+      input.forEach((file) => body.append("torrents", file));
     }
     body.append("skip_checking", `${!!options.skipChecking}`);
 
@@ -376,7 +376,7 @@ export class qBittorrent implements ITorrent {
       if (typeof input === "string") {
         inputs = input.split(/\r?\n/);
       } else {
-        inputs = input.map(file => file.name);
+        inputs = input.map((file) => file.name);
       }
       this.info(`Added ${inputs.join(", ")}`);
     }
